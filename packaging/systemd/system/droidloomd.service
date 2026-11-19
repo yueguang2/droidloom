@@ -4,6 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
+# Debian and Ubuntu build binderfs as a loadable module and do not load it on
+# demand. Load it before the daemon mounts its private binderfs instance.
+ExecStartPre=/sbin/modprobe binder_linux
 ExecStart=/usr/bin/droidloomd
 TimeoutStopSec=20s
 KillMode=mixed

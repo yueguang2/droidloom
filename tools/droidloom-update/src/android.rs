@@ -197,6 +197,10 @@ const PATCHES: &[(&str, &str)] = &[
         "android/aosp-patches/0004-libmeminfo-offline-gpu-accounting.patch",
     ),
     (
+        "system/libvintf",
+        "android/aosp-patches/0039-libvintf-optional-kernel-config.patch",
+    ),
+    (
         "",
         "android/binder-compat/0001-droidloom-context-manager-without-kernel-sid.patch",
     ),

@@ -427,6 +427,8 @@ pub fn assemble_artifacts(
     for name in [
         "libbinder.so",
         "libmeminfo.so",
+        "libvintf.so",
+        "libandroid_runtime.so",
         "libinputflinger.so",
         "libaudiobase.so",
         "libEGL.so",

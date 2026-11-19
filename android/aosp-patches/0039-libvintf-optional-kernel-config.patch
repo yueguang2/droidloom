@@ -1,0 +1,25 @@
+Subject: [PATCH] libvintf: tolerate a kernel without /proc/config.gz
+
+A shared host kernel does not necessarily expose CONFIG_IKCONFIG_PROC.
+Android's kernel-config readers, including android_os_Debug_isVmapStack,
+treat a failed load as fatal and abort system_server. Return an empty
+configuration map when the host has no /proc/config.gz instead.
+
+--- a/KernelConfigs.cpp
++++ b/KernelConfigs.cpp
+@@ -45,8 +45,13 @@
+     vintf::KernelConfigParser parser;
+     gzFile f = gzopen("/proc/config.gz", "rb");
+     if (f == NULL) {
+-        LOG(ERROR) << "Could not open /proc/config.gz: " << errno;
+-        return -errno;
++        // Not every Linux kernel exposes CONFIG_IKCONFIG_PROC. Android
++        // callers treat a missing configuration as fatal during boot, so
++        // report an empty map and let them fall back to conservative
++        // defaults instead of aborting system_server.
++        LOG(WARNING) << "Could not open /proc/config.gz: " << errno;
++        configs->clear();
++        return OK;
+     }
+ 
+     char buf[BUFFER_SIZE];

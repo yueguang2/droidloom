@@ -58,6 +58,14 @@
       "target": "/system/lib64/libbinder.so"
     },
     {
+      "source": "/usr/lib/droidloom/current/lib64/libvintf.so",
+      "target": "/system/lib64/libvintf.so"
+    },
+    {
+      "source": "/usr/lib/droidloom/current/lib64/libandroid_runtime.so",
+      "target": "/system/lib64/libandroid_runtime.so"
+    },
+    {
       "source": "/usr/lib/droidloom/current/bin/servicemanager",
       "target": "/system/bin/servicemanager"
     },

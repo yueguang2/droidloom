@@ -1,0 +1,9 @@
+#!/bin/sh
+# Drop the system unit from systemd's cache after the package files are gone.
+set -e
+
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload || true
+fi
+
+exit 0

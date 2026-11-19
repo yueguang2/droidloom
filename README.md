@@ -10,10 +10,10 @@ next to your other apps.
   <img src="assets/screenshots/whatsapp.png" alt="WhatsApp running in a separate Linux desktop window through Droidloom, with its Android process visible in the terminal below" width="640">
 </p>
 
-This is an early preview. Prebuilt pacman packages are published for x86_64
-Arch Linux and aarch64 Arch Linux ARM. Download them from the
-[latest release](https://github.com/denialwm/droidloom/releases/latest), or
-install them through the repository as below.
+This is an early preview. Prebuilt packages are published for Arch Linux and
+Ubuntu on x86_64 and aarch64. Download them from the
+[packages release](https://github.com/denialwm/droidloom/releases/tag/packages),
+or use the installers below.
 
 > [!NOTE]
 > NVIDIA GPUs are supported on x86_64 through [GPU forwarding](docs/gpu-forwarding.md):
@@ -100,19 +100,25 @@ Their contracts are in [docs/contracts](docs/contracts).
 Follow the **[step-by-step installation guide](docs/INSTALL.md)**, including
 first-time setup and **[installing APKs](docs/INSTALL.md#5-install-an-apk)**.
 
-1. Download and review the installer:
+1. Download and review the installer for your distribution:
 
    ```console
+   # Arch Linux
    curl -fLO https://denialwm.github.io/droidloom/install.sh
    less install.sh
+
+   # Ubuntu
+   curl -fLO https://denialwm.github.io/droidloom/install-ubuntu.sh
+   less install-ubuntu.sh
    ```
 
-2. Run `sh install.sh` to add the pacman repository and install or update both
-   packages. It picks the x86_64 or aarch64 repository for your machine, asks
-   for administrator access and keeps pacman's confirmation before a full
-   system upgrade. Droidloom packages are currently unsigned over HTTPS; this
-   policy is scoped to the Droidloom repository. Later updates arrive through
-   normal `sudo pacman -Syu`.
+2. Run `sh install.sh` on Arch to add the pacman repository, or
+   `sh install-ubuntu.sh` on Ubuntu to install the matching `.deb` pair. Both
+   pick the x86_64 or aarch64 packages for your machine and ask for
+   administrator access. Arch keeps pacman's confirmation before a full system
+   upgrade; Droidloom packages are currently unsigned over HTTPS, with the
+   signing exception scoped to the Droidloom repository. Later Arch updates
+   arrive through normal `sudo pacman -Syu`; rerun the Ubuntu script to update.
 3. From your normal Wayland desktop terminal, run `droidloomctl start`. First start
    requests administrator authentication to create Android data, runtime
    configuration and the system-service permission. The guide includes an explicit
@@ -168,7 +174,7 @@ on the same x86_64 machine.
 - `graphics/`: Wayland presenter, input, Composer and private host transport.
 - `android/`: Android components, patches and pinned upstream inputs.
 - `protocol/`: the private Android-to-host wire protocol.
-- `packaging/`: pacman metadata, service units and lifecycle integration.
+- `packaging/`: package metadata, Debian maintainer scripts, service units and lifecycle integration.
 
 Run `cargo check --locked --workspace -j 1` to check host Rust code. This does not
 build Android or install anything. Generated sources, images and packages are

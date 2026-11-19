@@ -1,0 +1,13 @@
+#!/bin/sh
+# An image-only upgrade must also stop the running cell before files change.
+set -e
+
+case "$1" in
+    upgrade)
+        if [ -x /usr/lib/droidloom/droidloom-package-helper ]; then
+            /usr/lib/droidloom/droidloom-package-helper before-upgrade
+        fi
+        ;;
+esac
+
+exit 0

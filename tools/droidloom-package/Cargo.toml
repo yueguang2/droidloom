@@ -3,7 +3,7 @@ name = "droidloom-package"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Build Droidloom pacman packages in an unprivileged Arch container"
+description = "Build Droidloom pacman and Debian packages from an unprivileged Arch container"
 
 [dependencies]
 clap.workspace = true

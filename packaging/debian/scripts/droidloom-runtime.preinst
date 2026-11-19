@@ -1,0 +1,13 @@
+#!/bin/sh
+# Stop a running Droidloom before its mounted Android images are replaced.
+set -e
+
+case "$1" in
+    upgrade)
+        if [ -x /usr/lib/droidloom/droidloom-package-helper ]; then
+            /usr/lib/droidloom/droidloom-package-helper before-upgrade
+        fi
+        ;;
+esac
+
+exit 0

@@ -97,7 +97,7 @@ restart, PID reuse or incomplete setup invalidates the cache.
 
 ## Current limitations
 
-The pacman packages are built for x86_64 and aarch64. Install standalone APKs with `droidloomctl install /path/to/application.apk`.
+The native packages are published for x86_64 and aarch64 on Arch Linux and Ubuntu. Install standalone APKs with `droidloomctl install /path/to/application.apk`.
 
 For apps needing explicit activity selection, use
 `droidloomctl launch PACKAGE --component PACKAGE/ACTIVITY`.

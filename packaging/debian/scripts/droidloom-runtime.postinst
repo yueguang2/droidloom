@@ -1,0 +1,12 @@
+#!/bin/sh
+# Refresh the system unit and transfer package-managed setup to the new files.
+set -e
+
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload || true
+fi
+if [ -x /usr/lib/droidloom/droidloom-package-helper ]; then
+    /usr/lib/droidloom/droidloom-package-helper after-install
+fi
+
+exit 0

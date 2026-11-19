@@ -1,10 +1,66 @@
 //! Small release interface shared by local runs and GitHub Actions.
-use super::{Architecture, Result, Version, repository, run};
+use super::{Architecture, Result, Version, debian, repository, run};
 use clap::Subcommand;
 use std::{fs, path::Path, process::Command};
 
 const REPOSITORY: &str = "denialwm/droidloom";
 const RELEASE: &str = "packages";
+
+fn debian_architecture(architecture: &str) -> Result<&'static str> {
+    match architecture {
+        "x86_64" => Ok("amd64"),
+        "aarch64" => Ok("arm64"),
+        other => Err(format!("no Debian architecture for {other}").into()),
+    }
+}
+
+fn debian_directory(repo: &Path, version: &Version) -> Result<std::path::PathBuf> {
+    Ok(repo
+        .join("dist/deb")
+        .join(version.directory())
+        .join(debian_architecture(&version.architecture)?))
+}
+
+fn debian_packages(repo: &Path, version: &Version) -> Result<Vec<std::path::PathBuf>> {
+    let directory = debian_directory(repo, version)?;
+    ["runtime", "image"]
+        .iter()
+        .map(|component| {
+            let path = directory.join(format!(
+                "droidloom-{component}_{}_{}.deb",
+                version.directory(),
+                debian_architecture(&version.architecture)?
+            ));
+            if !path.is_file() {
+                return Err(format!("missing {}", path.display()).into());
+            }
+            if fs::metadata(&path)?.len() >= 2 * 1024 * 1024 * 1024 {
+                return Err("GitHub Release assets must be smaller than 2 GiB".into());
+            }
+            Ok(path)
+        })
+        .collect()
+}
+
+fn ensure_debian_packages(repo: &Path, version: &Version) -> Result<()> {
+    let directory = debian_directory(repo, version)?;
+    let expected = [
+        format!(
+            "droidloom-runtime_{}_{}.deb",
+            version.directory(),
+            debian_architecture(&version.architecture)?
+        ),
+        format!(
+            "droidloom-image_{}_{}.deb",
+            version.directory(),
+            debian_architecture(&version.architecture)?
+        ),
+    ];
+    if expected.iter().all(|name| directory.join(name).is_file()) {
+        return Ok(());
+    }
+    debian::convert(&version.output(repo), Some(&directory))
+}
 
 #[derive(Subcommand)]
 pub enum Action {
@@ -50,6 +106,11 @@ pub fn execute(action: Action) -> Result<()> {
     }
     let version = &pairs[0].1;
     let packages: Vec<_> = pairs.iter().flat_map(|(pair, _)| pair).collect();
+    let mut debians = Vec::new();
+    for (_, pair_version) in &pairs {
+        ensure_debian_packages(&repo, pair_version)?;
+        debians.extend(debian_packages(&repo, pair_version)?);
+    }
     let site = repo.join("dist/pages");
     match action {
         Action::Prepare => {
@@ -69,11 +130,15 @@ pub fn execute(action: Action) -> Result<()> {
                 }
             }
             fs::copy(repo.join("install.sh"), site.join("install.sh"))?;
+            fs::copy(
+                repo.join("install-ubuntu.sh"),
+                site.join("install-ubuntu.sh"),
+            )?;
             fs::write(site.join(".nojekyll"), "")?;
             fs::write(
                 site.join("index.html"),
                 format!(
-                    "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Droidloom packages</title>\n<h1>Droidloom {}</h1><p>Arch Linux on x86_64, Arch Linux ARM on aarch64. NVIDIA graphics are not supported yet; support is planned and under development, and <a href=\"https://denialwm.org/support.html\">supporting the project</a> helps it move forward.</p>\n<p>Download and review <a href=\"install.sh\">install.sh</a>, then run <code>sh install.sh</code> to install or update.</p>\n<p>Packages are unsigned and delivered over HTTPS. The installer configures this policy only for the Droidloom repository.</p>\n<p><a href=\"https://github.com/denialwm/droidloom/blob/main/docs/INSTALL.md\">Installation guide</a> · <a href=\"https://github.com/denialwm/droidloom/releases/latest\">Packages and source</a></p></html>\n",
+                    "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Droidloom packages</title>\n<h1>Droidloom {}</h1><p>Arch Linux and Ubuntu on x86_64 and aarch64. NVIDIA graphics are not supported yet; support is planned and under development, and <a href=\"https://denialwm.org/support.html\">supporting the project</a> helps it move forward.</p>\n<p>Download and review <a href=\"install.sh\">install.sh</a> on Arch, or <a href=\"install-ubuntu.sh\">install-ubuntu.sh</a> on Ubuntu, then run the script to install or update.</p>\n<p>Packages are unsigned and delivered over HTTPS. The installer configures this policy only for the Droidloom repository.</p>\n<p><a href=\"https://github.com/denialwm/droidloom/blob/main/docs/INSTALL.md\">Installation guide</a> · <a href=\"https://github.com/denialwm/droidloom/releases/tag/packages\">Packages and source</a></p></html>\n",
                     version.directory()
                 ),
             )?;
@@ -86,7 +151,7 @@ pub fn execute(action: Action) -> Result<()> {
                 serde_json::from_slice(&metadata.stdout)?
             } else {
                 // A failed create remains an error (including authentication failures).
-                run(gh().args(["release", "create", RELEASE, "--title", "Droidloom pacman packages", "--notes", "Pacman package archives and matching source snapshots. Install using https://denialwm.github.io/droidloom/install.sh. Older archives are retained for clients with cached databases."]))?;
+                run(gh().args(["release", "create", RELEASE, "--title", "Droidloom packages", "--notes", "Pacman and Debian package archives with matching source snapshots. Arch: https://denialwm.github.io/droidloom/install.sh; Ubuntu: https://denialwm.github.io/droidloom/install-ubuntu.sh. Older archives are retained for clients with cached databases."]))?;
                 serde_json::json!({"assets": []})
             };
             let source = repo
@@ -101,7 +166,11 @@ pub fn execute(action: Action) -> Result<()> {
             // Preflight every asset before any upload. Same-version rebuilds may
             // resume only when their bytes match; never replace published files.
             let mut pending = Vec::new();
-            for path in packages.into_iter().chain(std::iter::once(&source)) {
+            for path in packages
+                .into_iter()
+                .chain(debians.iter())
+                .chain(std::iter::once(&source))
+            {
                 let name = path
                     .file_name()
                     .unwrap()
@@ -161,5 +230,11 @@ mod tests {
         .unwrap();
         fs::write(output.join("droidloom-gapps-1-x86_64.pkg.tar.zst"), "addon").unwrap();
         assert_eq!(packages(temp.path(), &version).unwrap().len(), 2);
+        let debs = temp.path().join("dist/deb/1.2.3-4/amd64");
+        fs::create_dir_all(&debs).unwrap();
+        assert!(debian_packages(temp.path(), &version).is_err());
+        fs::write(debs.join("droidloom-runtime_1.2.3-4_amd64.deb"), "runtime").unwrap();
+        fs::write(debs.join("droidloom-image_1.2.3-4_amd64.deb"), "image").unwrap();
+        assert_eq!(debian_packages(temp.path(), &version).unwrap().len(), 2);
     }
 }

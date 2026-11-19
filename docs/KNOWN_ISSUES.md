@@ -1,6 +1,6 @@
 # Known issues and preview limits
 
-These limitations apply to the current pacman preview. Installation and APK
+These limitations apply to the current preview packages. Installation and APK
 commands are in [INSTALL.md](INSTALL.md); source builds are in
 [BUILDING.md](BUILDING.md).
 
@@ -675,7 +675,7 @@ remains deferred for the current Denial target, with full damage on changed laye
   Reinstalling or downgrading the software does not reset or roll back app data.
 - Older developer-installed runtimes can conflict with package-owned paths.
   Back up and retire such an installation before migration; do not use blanket
-  pacman overwrite options.
+  package-manager overwrite options.
 
 ## Reporting a problem
 
@@ -683,7 +683,10 @@ Include the package revision, compositor, GPU, APK version and architecture, the
 command used, and what appeared on screen. Collect logs before restarting Android:
 
 ```console
+# Arch
 pacman -Q droidloom-runtime droidloom-image
+# Ubuntu
+dpkg-query -W droidloom-runtime droidloom-image
 droidloomctl logs -n 500
 droidloomctl crashes com.example.app
 journalctl --user -u droidloom.service -n 100 --no-pager

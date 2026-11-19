@@ -64,7 +64,7 @@ enum Command {
         #[arg(long, default_value = DEFAULT_CELL_SPEC)]
         spec: PathBuf,
     },
-    /// Update a source installation, or show pacman package-update instructions.
+    /// Update a source installation, or show native package-update instructions.
     Update {
         /// Discard updater-owned build outputs before rebuilding.
         #[arg(long)]
@@ -265,7 +265,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             Command::Gpu { .. } => unreachable!("handled by package setup"),
             Command::Update { clean, build_only } => {
                 if PathBuf::from("/usr/share/droidloom/package.json").is_file() {
-                    return Err("Droidloom is managed by pacman. Install the new package pair with sudo pacman -U, or build it with cargo run --locked -j 1 -p droidloom-package -- build. Sudo is needed only to replace package-owned system files and update pacman's database.".into());
+                    return Err("Droidloom is managed by the system package manager. Install the new package pair with the same package command used for installation: sudo pacman -U on Arch, or sudo apt install ./droidloom-runtime_*.deb ./droidloom-image_*.deb on Ubuntu. Build the pair with cargo run --locked -j 1 -p droidloom-package -- build. Sudo is needed only to replace package-owned system files and update the package database.".into());
                 }
                 let mut command = droidloom_cpu_placement::command("/usr/bin/droidloom-update");
                 if clean {
@@ -472,7 +472,7 @@ fn storage(
 /// GPU choice is package setup's: it rewrites the root-owned configuration.
 fn gpu(choice: Option<&droidloom_supervisor::host_gpu::GpuChoice>) -> Result<(), Box<dyn std::error::Error>> {
     if !PathBuf::from("/usr/share/droidloom/package.json").is_file() {
-        return Err("choosing the GPU needs the pacman package; a source installation reads \"gpu\" from /etc/droidloom/cell.json at droidloomctl update".into());
+        return Err("choosing the GPU needs the native packages; a source installation reads \"gpu\" from /etc/droidloom/cell.json at droidloomctl update".into());
     }
     let mut command = droidloom_cpu_placement::command("/usr/lib/droidloom/droidloom-package-helper");
     command.arg("gpu");

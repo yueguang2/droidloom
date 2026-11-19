@@ -1,17 +1,21 @@
-# Build the pacman packages
+# Build the packages
 
 The Rust package builder compiles Droidloom's host programs and modified Android
 components, assembles the Android image, and produces a matching runtime/image
-pacman package pair. It uses pinned upstream Android base and toolchain inputs;
-it does not rebuild every upstream Android component from source.
+pacman package pair. The same pair is converted into `.deb` packages for Ubuntu;
+the conversion repackages the identical binaries and image, so there is only one
+build product to validate. It uses pinned upstream Android base and toolchain
+inputs; it does not rebuild every upstream Android component from source.
 
 ## Shipping with GitHub Actions
 
 `.github/workflows/ship.yml` runs on pushes to `main` or a manual dispatch of
 `main`. It builds the matching x86_64 package pair, cross-builds the aarch64 pair,
-runs the package checks, uploads archives to the `packages` GitHub Release, then
-deploys one pacman database per architecture and `install.sh` to GitHub Pages. There is one job, with no promotion or
-provenance pipeline. Pull requests do not run on this machine.
+converts both pairs into `.deb` packages, runs the package checks, uploads the
+pacman and Debian archives to the `packages` GitHub Release, then deploys one
+pacman database per architecture plus `install.sh` and `install-ubuntu.sh` to
+GitHub Pages. There is one job, with no promotion or provenance pipeline. Pull
+requests do not run on this machine.
 
 Before publishing changed packages, increment `packaging/arch/version.json`'s
 `release` (or update `version` and reset `release` to 1). Published filenames are
@@ -37,9 +41,10 @@ The runner and all its build state live under `/mnt/puck/logix/droidloom`:
 
 The machine needs the usual build prerequisites plus `gh` (authenticated with
 repository administration access for runner registration), `curl`, `tar`,
-`sha256sum`, `cmp`, `jq`, `repo-add` (Arch's `pacman` package), and a working systemd
-user manager. Configure GitHub Pages once with **Source: GitHub Actions**.
-No host sudo is used by the runner or package builds.
+`sha256sum`, `cmp`, `jq`, `repo-add` (Arch's `pacman` package), `ar` and `zstd`
+for Debian conversion, and a working systemd user manager. Configure GitHub Pages
+once with **Source: GitHub Actions**. No host sudo is used by the runner or
+package builds.
 
 Install or refresh the official runner while stopped:
 
@@ -94,10 +99,33 @@ cargo run --locked -j 1 -p droidloom-package -- ship prepare
 
 This writes `dist/pages`. `ship publish` uploads to GitHub and is normally run
 only by Actions with its scoped token. Pages stores only metadata and the
-installer because Android packages approach its 1 GB site limit. Pacman's
+installers because Android packages approach its 1 GB site limit. Pacman's
 `CacheServer` fetches the archives from Releases without requesting databases
-there. Packages are currently unsigned; see [INSTALL.md](INSTALL.md) for the
-repository's explicit signing policy.
+there; Ubuntu users download the `.deb` pair from Releases. Packages are
+currently unsigned; see [INSTALL.md](INSTALL.md) for the repository's explicit
+signing policy.
+
+### Debian and Ubuntu packages
+
+No second build is needed: after a normal package build, convert the matching
+pacman pair into Debian packages with:
+
+```console
+cargo run --locked -j 1 -p droidloom-package -- deb \
+  --packages dist/arch/<version-release>/<architecture>
+```
+
+The files appear in `dist/deb/<version-release>/<architecture>/`. The conversion
+unpacks the pair, keeps the same `/usr/lib/droidloom` payload, drops pacman's
+`libalpm` hooks, adds Debian maintainer scripts, and maps package dependencies to
+their Ubuntu names. The output is an `ar` archive built by the Rust tool; no
+`dpkg-deb` or root access is involved. Check both files with
+`dpkg-deb -I` and `dpkg-deb -c`, then install them with
+`sudo apt install ./droidloom-runtime_*.deb ./droidloom-image_*.deb`.
+
+The `.deb` packages must carry the same version as the pacman pair. If the
+payload changes, increment `packaging/arch/version.json` and rebuild before
+converting, so both formats describe the same bytes.
 
 ## Frame-stage timing baselines
 
@@ -315,9 +343,16 @@ Install Rust/Cargo with a C linker, Git, Podman and rsync. On Arch Linux:
 sudo pacman -S --needed rustup gcc git podman rsync
 ```
 
+On Ubuntu:
+
+```console
+sudo apt install rustup gcc git podman rsync zstd
+```
+
 Sudo is needed only to install those host tools and dependencies under `/usr` and
-update pacman's database. If you already have a working Rust installation, keep
-it; you do not need to replace it with rustup. The checkout pins Rust 1.93.0.
+update the package manager's database. If you already have a working Rust
+installation, keep it; you do not need to replace it with rustup. The checkout
+pins Rust 1.93.0.
 
 Allow **120 GiB free** for a fresh build, including sources, toolchains, compiler
 outputs, downloads and temporary package staging. The workflow has been exercised

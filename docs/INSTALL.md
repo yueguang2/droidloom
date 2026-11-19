@@ -1,15 +1,15 @@
 # Install Droidloom
 
-This guide covers the preview packages for x86_64 Arch Linux and aarch64 Arch
-Linux ARM. Prebuilt packages for both are in the
-[latest release](https://github.com/denialwm/droidloom/releases/latest). Read
-[known issues](KNOWN_ISSUES.md) before installing. To produce the packages yourself,
+This guide covers the preview packages for x86_64 and aarch64 Linux on Arch
+Linux and Ubuntu. Prebuilt packages for both are in the
+[packages release](https://github.com/denialwm/droidloom/releases/tag/packages).
+Read [known issues](KNOWN_ISSUES.md) before installing. To produce the packages yourself,
 follow [BUILDING.md](BUILDING.md), then return here.
 
 ## 1. Check prerequisites
 
-- An x86_64 machine running Arch Linux, or an aarch64 machine running Arch
-  Linux ARM, with a Wayland desktop.
+- An x86_64 or aarch64 machine running Arch Linux, or Ubuntu 24.04 or newer,
+  with a Wayland desktop.
 - An AMD, Intel or NVIDIA GPU, or on aarch64 a Qualcomm Adreno through the
   kernel's `msm` driver or an Arm Mali through `panthor` or `panfrost`. AMD,
   Intel, Adreno and Mali render natively. NVIDIA, on
@@ -25,6 +25,13 @@ Run the desktop commands below in a terminal **inside your Wayland session**, as
 your ordinary user. Do not run `droidloomctl start` or app launches with sudo.
 
 ## 2. Install both packages
+
+Both packages are required, must have the same version and release, and must be
+installed together. Installation leaves Droidloom stopped. No compilation runs
+on the recipient's machine when installing prebuilt packages. Google apps are
+not included.
+
+### Arch Linux
 
 Install or update from the published pacman repository:
 
@@ -43,7 +50,6 @@ Never` applies only to `[droidloom]`. Other repositories keep their signing poli
 Pages serves the package database; GitHub Releases serves the package archives.
 On Arch Linux ARM (aarch64) the same script points pacman at the aarch64
 repository.
-Google apps are not included.
 
 For locally built packages, put one matching pair in a directory and run:
 
@@ -52,9 +58,32 @@ sudo pacman -U ./droidloom-runtime-*.pkg.tar.zst ./droidloom-image-*.pkg.tar.zst
 ```
 
 Sudo allows pacman to install system files and dependencies and update its package
-database. Both packages are required and must have the same version and release.
-Installation leaves Droidloom stopped. No compilation runs on the recipient's
-machine when installing prebuilt packages.
+database.
+
+### Ubuntu
+
+Install or update the matching `.deb` pair and their distro dependencies:
+
+```console
+curl -fLO https://denialwm.github.io/droidloom/install-ubuntu.sh
+less install-ubuntu.sh
+sh install-ubuntu.sh
+```
+
+The script downloads the newest matching `amd64` or `arm64` package pair from the
+`packages` GitHub release and runs `apt-get install` with normal dependency
+resolution. Run the same script again to update. Set `DROIDLOOM_VERSION` to pin a
+release, for example `DROIDLOOM_VERSION=0.1.0-47 sh install-ubuntu.sh`.
+Sudo is needed to install system files and their Ubuntu dependencies.
+
+For locally built packages, put one matching pair in a directory and run:
+
+```console
+sudo apt install ./droidloom-runtime_*.deb ./droidloom-image_*.deb
+```
+
+Use `apt install` rather than `dpkg -i`: apt resolves the package's dependencies
+and installs both packages in one transaction.
 
 ## 3. Complete first-time setup and start Android
 
@@ -300,9 +329,10 @@ server runs in a separate `droidloom-adb-server.service` user unit, so stopping
 Droidloom preserves that server. An existing ADB server is reused.
 If these prerequisites are unavailable, Android still starts
 and `journalctl -b -u droidloomd.service` reports `automatic ADB unavailable`.
-Install `android-tools`, fix the owner's home permissions, then restart
-Droidloom to prepare the key and connection. Custom ADB server addresses and
-custom key directories are not selected by the system daemon.
+Install `android-tools` on Arch, or `adb` on Ubuntu, fix the owner's home
+permissions, then restart Droidloom to prepare the key and connection. Custom
+ADB server addresses and custom key directories are not selected by the system
+daemon.
 
 ## Stop, restart, upgrade and remove
 
@@ -314,21 +344,28 @@ droidloomctl start
 Startup is manual: app launch does not currently start a stopped runtime.
 Stopping releases the runtime's resources and closes its Android windows.
 
-To upgrade, install the new matching package pair with the same `pacman -U`
-command, then run `droidloomctl start`. The transaction stops Droidloom and retains
-Android data. Installing an older pair restores software, not changes to app data.
+To upgrade, install the new matching package pair with the same package command
+(`pacman -U` on Arch, `apt install ./...deb` on Ubuntu), then run
+`droidloomctl start`. The transaction stops Droidloom and retains Android data.
+Installing an older pair restores software, not changes to app data.
 
-To uninstall:
+To uninstall on Arch:
 
 ```console
 sudo pacman -R droidloom-runtime droidloom-image
 ```
 
-Sudo lets pacman stop the system service, remove package-owned files and update
-its database. Removal cleans exported desktop launchers and the generated service
-permission. **Android app data and personal configuration are retained**, so a
-reinstall is not a factory reset. Back them up before any deliberate data reset
-(see the next section).
+To uninstall on Ubuntu:
+
+```console
+sudo apt remove droidloom-runtime droidloom-image
+```
+
+Sudo lets the package manager stop the system service, remove package-owned files
+and update its database. Removal cleans exported desktop launchers and the
+generated service permission. **Android app data and personal configuration are
+retained**, so a reinstall is not a factory reset. Back them up before any
+deliberate data reset (see the next section).
 
 ## Back up and restore Android
 

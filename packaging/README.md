@@ -1,6 +1,8 @@
 # Packaging internals
 
-For installation and source builds, use the [Arch Linux guide](arch/README.md).
+For installation and source builds, use the [installation guide](../docs/INSTALL.md).
+Arch package internals are in the [Arch guide](arch/README.md); Debian/Ubuntu
+maintainer scripts are in [`debian/scripts`](debian/scripts).
 
 The native package split is `droidloom-runtime` and `droidloom-image`, with
 optional hardware-service packages. `droidloom-runtime` owns the supervisor,
@@ -100,15 +102,18 @@ sizes live at `$XDG_STATE_HOME/droidloom/window-sizes-v1.json`.
 ## Build and installation ownership
 
 The Rust package builder produces `droidloom-runtime` and `droidloom-image`.
-Pacman owns their system files. Rust package support handles first-user setup,
-service permissions and transaction hooks. Upgrades stop Droidloom and leave it
-stopped; removal retains application data. See the [package guide](arch/README.md)
-for commands and exact administrator requirements.
+The native package manager owns their system files. Rust package support handles
+first-user setup, service permissions and transaction hooks. Upgrades stop
+Droidloom and leave it stopped; removal retains application data. See the
+[installation guide](../docs/INSTALL.md) for commands and exact administrator
+requirements, and [BUILDING.md](../docs/BUILDING.md#debian-and-ubuntu-packages)
+for turning one pacman pair into the matching `.deb` pair.
 
 The [Rust updater](../tools/droidloom-update/README.md) also supports a separate
 developer installation with versioned releases, transactional activation and
-rollback. It refuses to overwrite pacman-managed files. Moving an older developer
-installation to pacman needs an explicit migration, not blanket overwrite flags.
+rollback. It refuses to overwrite package-managed files. Moving an older developer
+installation to the native packages needs an explicit migration, not blanket
+overwrite flags.
 
 ## Component installation helpers
 
@@ -121,12 +126,12 @@ inside Android and are also used by the Rust assembly.
 The Rust builder checks required components, executable permissions, architecture
 and compiled input ABI metadata, including alternate input-bridge copies. It
 accepts compatible byte differences and extra files; pinned upstream inputs
-retain their integrity checks. The pacman workflow uses this builder to produce
-a matched runtime/image pair.
+retain their integrity checks. The package workflow uses this builder to produce
+a matched runtime/image pair in both pacman and Debian formats.
 
 The retained ARM64 installer uses a sealed manifest with file hashes, modes,
 symlinks and input ABI checks. This is specific to that installer, not an added
-gate for the private pacman preview. Its Python regressions run from the Rust
+gate for the private preview. Its Python regressions run from the Rust
 repository-contract suite.
 
 Compiled input markers do not cover every private ABI. Package lifecycle checks

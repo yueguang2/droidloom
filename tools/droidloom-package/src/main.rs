@@ -1,5 +1,6 @@
 //! Rust orchestration around makepkg's standard package interface.
 mod components;
+mod debian;
 mod runner;
 mod shipping;
 mod validation;
@@ -22,7 +23,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[derive(Parser)]
 #[command(
     version,
-    about = "Build Droidloom pacman packages without installing them"
+    about = "Build Droidloom pacman and Debian packages without installing them"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -81,6 +82,15 @@ enum Action {
         work: PathBuf,
         #[arg(long)]
         source: Option<PathBuf>,
+    },
+    /// Build Debian/Ubuntu .deb packages from one matching pacman package pair.
+    Deb {
+        /// Directory containing the matching runtime and image pacman packages.
+        #[arg(long)]
+        packages: PathBuf,
+        /// Folder the two .deb files are written to.
+        #[arg(long)]
+        destination: Option<PathBuf>,
     },
     /// Exercise package install, setup, reinstall and removal in disposable Arch.
     Check {
@@ -357,7 +367,7 @@ fn build(
         .status()
         .is_ok_and(|s| s.success())
     {
-        return Err("Podman is missing. Install it with sudo pacman -S --needed podman. Sudo is needed to write Podman's system files, its container runtime/networking dependencies, and pacman's database. Droidloom compilation and packaging need no sudo.".into());
+        return Err("Podman is missing. Install it with your distribution's package manager (Arch: sudo pacman -S --needed podman; Ubuntu: sudo apt install podman). Sudo is needed to install the container runtime. Droidloom compilation and packaging need no sudo.".into());
     }
     if !Command::new("rsync")
         .arg("--version")
@@ -365,7 +375,7 @@ fn build(
         .status()
         .is_ok_and(|s| s.success())
     {
-        return Err("rsync is missing. It copies the source snapshot into the isolated build directory. Install it with sudo pacman -S --needed rsync; sudo is needed to write /usr/bin/rsync and update pacman's database. The source copy itself runs without sudo.".into());
+        return Err("rsync is missing. It copies the source snapshot into the isolated build directory. Install it with your distribution's package manager (Arch: sudo pacman -S --needed rsync; Ubuntu: sudo apt install rsync). The source copy itself runs without sudo.".into());
     }
     let work = build_workspace(&repo)?;
     fs::create_dir_all(&work)?;
@@ -591,6 +601,13 @@ fn build(
             .collect::<Vec<_>>()
             .join(" ")
     );
+    if Path::new("/etc/debian_version").is_file() {
+        println!("To install the same build on Debian or Ubuntu, build .deb packages first:");
+        println!(
+            "cargo run --locked -j 1 -p droidloom-package -- deb --packages {}",
+            quote_path(&output)
+        );
+    }
     Ok(())
 }
 /// The payload's package.json names its release and candidate; the packages
@@ -928,6 +945,10 @@ fn execute() -> Result<()> {
             work,
             source,
         } => candidate(source, &payload, &destination, &work),
+        Action::Deb {
+            packages,
+            destination,
+        } => debian::convert(&packages, destination.as_deref()),
         Action::Check { packages, previous } => validation::check(&packages, previous.as_deref()),
         Action::InContainer {
             architecture,

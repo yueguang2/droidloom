@@ -4,7 +4,7 @@
 
 | Tool | Purpose |
 | --- | --- |
-| `droidloom-package` | Build binaries and pacman packages in rootless Podman; test package lifecycle in a disposable container. See the [package guide](../packaging/arch/README.md). |
+| `droidloom-package` | Build binaries and pacman packages in rootless Podman, convert a matching pair to Debian/Ubuntu `.deb` packages, and test package lifecycle in a disposable container. See the [Arch package guide](../packaging/arch/README.md) and [Debian build section](../docs/BUILDING.md#debian-and-ubuntu-packages). |
 | `droidloom-update` | Rust source builder and transactional developer installer. Supplies the package builder's Android build and assembly implementation. See its [guide](droidloom-update/README.md). |
 | `droidloom-source` | Materialize pinned sparse AOSP sources; a library dependency of the updater. |
 | `droidloom-image` | Prepare the pinned Android base; a library dependency of the updater. |
@@ -12,12 +12,13 @@
 | `droidloom-mesa` | Prepare pinned Mesa sources and patches; a library dependency of the updater. |
 
 The package builder is the distribution entry point. The source updater is an
-alternative developer installation; it cannot overwrite a pacman installation.
+alternative developer installation; it cannot overwrite a package-managed
+installation.
 Do not assemble a preview from unrelated component builds.
 
 ## Specialist helpers
 
-These are not needed to install or build the x86_64 pacman preview. They remain
+These are not needed to install or build the x86_64 preview packages. They remain
 because the Rust package workflow does not replace their ARM64, diagnostic or
 source-generation roles.
 

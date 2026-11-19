@@ -1,0 +1,13 @@
+#!/bin/sh
+# Stop Droidloom and remove its desktop integration before removal.
+set -e
+
+case "$1" in
+    remove)
+        if [ -x /usr/lib/droidloom/droidloom-package-helper ]; then
+            /usr/lib/droidloom/droidloom-package-helper before-remove
+        fi
+        ;;
+esac
+
+exit 0

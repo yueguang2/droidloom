@@ -395,7 +395,7 @@ pub fn apply(payload: &Path, uid: u32, start_runtime: bool) -> Result<()> {
 fn refuse_package_installation() -> Result<()> {
     if Path::new("/usr/share/droidloom/package.json").exists() {
         return fail(
-            "Droidloom is managed by pacman; use pacman -U to replace package-owned files. The development updater cannot activate or recover an installation over a pacman package.",
+            "Droidloom is managed by the system package manager; use pacman -U on Arch or apt install on Ubuntu to replace package-owned files. The development updater cannot activate or recover an installation over a native package.",
         );
     }
     Ok(())

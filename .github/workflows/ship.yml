@@ -1,4 +1,4 @@
-name: Ship pacman repository
+name: Ship Droidloom packages
 
 on:
   push:
@@ -42,7 +42,7 @@ jobs:
           version=$(jq -r '.version + "-" + (.release | tostring)' packaging/arch/version.json)
           cargo run --locked -j 1 -p droidloom-package -- check --packages "dist/arch/$version/x86_64"
           cargo run --locked -j 1 -p droidloom-package -- check --packages "dist/arch/$version/aarch64"
-      - name: Prepare pacman database and installer
+      - name: Prepare pacman database, Debian packages and installers
         run: cargo run --locked -j 1 -p droidloom-package -- ship prepare
       - name: Upload packages and matching source
         env:

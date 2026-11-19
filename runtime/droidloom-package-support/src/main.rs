@@ -1,4 +1,4 @@
-//! Package setup and pacman lifecycle integration. No shell interpreter is used.
+//! Package setup and native-package lifecycle integration. No shell interpreter is used.
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -26,7 +26,7 @@ const GAPPS: &str = "/usr/lib/droidloom/addons/gapps";
 #[derive(Parser)]
 #[command(
     version,
-    about = "Configure and maintain a pacman-managed Droidloom installation"
+    about = "Configure and maintain a package-managed Droidloom installation"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -110,7 +110,7 @@ fn user(uid: u32) -> Result<User> {
 }
 fn require_root() -> Result<()> {
     if unsafe { libc::geteuid() } != 0 {
-        return Err("this operation writes root-owned Droidloom configuration or controls its system service; run through pacman or the authenticated setup operation".into());
+        return Err("this operation writes root-owned Droidloom configuration or controls its system service; run through the package manager or the authenticated setup operation".into());
     }
     Ok(())
 }

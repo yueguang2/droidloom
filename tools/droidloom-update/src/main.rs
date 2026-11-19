@@ -268,7 +268,7 @@ fn execute(args: Args) -> Result<()> {
         && std::path::Path::new("/usr/share/droidloom/package.json").exists()
     {
         return fail(
-            "Droidloom is managed by pacman. Build packages with cargo run --locked -j 1 -p droidloom-package -- build, then install the printed package pair with sudo pacman -U. Sudo is needed to replace package-owned system files and update pacman's database.",
+            "Droidloom is managed by the system package manager. Build packages with cargo run --locked -j 1 -p droidloom-package -- build, then install the printed pacman pair with sudo pacman -U on Arch. For Ubuntu, convert the pair with cargo run --locked -j 1 -p droidloom-package -- deb --packages <dir> and install the .deb pair with sudo apt install. Sudo is needed only to replace package-owned system files and update the package database.",
         );
     }
     let repo = repository(args.source)?;

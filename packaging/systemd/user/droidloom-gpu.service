@@ -5,7 +5,7 @@ Requires=droidloom-gpu.socket
 
 [Service]
 # Started by the first Android Vulkan client; forks one server per client.
-# Setup names the GPU there (DROIDLOOM_GPU): pacman installs and source
+# Setup names the GPU there (DROIDLOOM_GPU): package installation and source
 # installs keep it in different files.
 EnvironmentFile=-/etc/droidloom/runtime.env
 EnvironmentFile=-/usr/lib/environment.d/60-droidloom.conf

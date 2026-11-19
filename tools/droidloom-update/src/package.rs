@@ -236,7 +236,7 @@ fn package_layout(
     fs::remove_dir_all(stage.join("var"))?;
     fs::create_dir_all(&runtime)?;
     fs::rename(stage.join("usr"), runtime.join("usr"))?;
-    // A package installation is maintained through pacman. The source updater remains
+    // A package installation is maintained through the system package manager. The source updater remains
     // available in the checkout but is not installed as a second system-file owner.
     fs::remove_file(runtime.join("usr/bin/droidloom-update"))?;
     copy(

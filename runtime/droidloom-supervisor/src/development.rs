@@ -441,6 +441,26 @@ impl Drop for DevelopmentCell {
     }
 }
 
+/// Whether the host's `unshare` accepts `--forward-signals`.
+///
+/// util-linux added this option in 2.42. Ubuntu 24.04 ships 2.39 and
+/// Ubuntu 26.04 ships 2.41, where passing it makes `unshare` exit before
+/// Android init can start.
+fn unshare_help_advertises_forward_signals(stdout: &[u8], stderr: &[u8]) -> bool {
+    [stdout, stderr]
+        .into_iter()
+        .any(|output| String::from_utf8_lossy(output).contains("--forward-signals"))
+}
+
+fn unshare_supports_forward_signals() -> bool {
+    std::process::Command::new("unshare")
+        .arg("--help")
+        .output()
+        .is_ok_and(|output| {
+            unshare_help_advertises_forward_signals(&output.stdout, &output.stderr)
+        })
+}
+
 /// Start a development cell and return its exact lifecycle handle.
 ///
 /// `entry_executable` must expose the supervisor's private
@@ -490,13 +510,17 @@ pub fn start_development_cell(
             OsStr::new("--uts"),
             OsStr::new("--fork"),
             OsStr::new("--kill-child=TERM"),
-            OsStr::new("--forward-signals"),
-            OsStr::new("--propagation=private"),
-            entry_executable.as_os_str(),
-            OsStr::new("development-enter"),
-            OsStr::new("--spec"),
-            spec_path.as_os_str(),
         ]);
+    if unshare_supports_forward_signals() {
+        command.arg(OsStr::new("--forward-signals"));
+    }
+    command.args([
+        OsStr::new("--propagation=private"),
+        entry_executable.as_os_str(),
+        OsStr::new("development-enter"),
+        OsStr::new("--spec"),
+        spec_path.as_os_str(),
+    ]);
     // If the lifecycle owner disappears even under SIGKILL or a crash,
     // terminate `unshare`; its own --kill-child contract then terminates
     // Android PID 1. Only deterministic network/path residue remains for the
@@ -2514,6 +2538,22 @@ fn io_error(context: &str, source: io::Error) -> DevelopmentError {
 mod tests {
     use super::*;
     use std::io::Write;
+
+    #[test]
+    fn unshare_help_detects_forward_signals() {
+        assert!(unshare_help_advertises_forward_signals(
+            b"--kill-child[=SIG]  --forward-signals  --propagation\n",
+            b""
+        ));
+        assert!(unshare_help_advertises_forward_signals(
+            b"",
+            b"--forward-signals\n"
+        ));
+        assert!(!unshare_help_advertises_forward_signals(
+            b"--kill-child[=SIG]  --propagation\n",
+            b""
+        ));
+    }
 
     #[test]
     fn servicemanager_runs_as_root_and_keeps_its_groups() {

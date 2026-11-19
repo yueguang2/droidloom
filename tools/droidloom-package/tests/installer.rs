@@ -80,6 +80,10 @@ fn ubuntu_installer_selects_matching_pair_and_uses_apt() {
         "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$FIXTURE/transactions\"\n",
     );
     executable(
+        &bin.join("dpkg-query"),
+        "#!/bin/sh\nif [ \"${IMAGE_INSTALLED:-0}\" = 1 ]; then printf '%s\\n' 'install ok installed 0.1.0-47'; exit 0; fi\nexit 1\n",
+    );
+    executable(
         &bin.join("curl"),
         r#"#!/bin/sh
 out=
@@ -97,12 +101,16 @@ esac
     );
     let script = include_str!("../../../install-ubuntu.sh");
     fs::write(root.join("install-ubuntu.sh"), script).unwrap();
-    let result = Command::new("sh")
-        .arg(root.join("install-ubuntu.sh"))
-        .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
-        .env("FIXTURE", root)
-        .output()
-        .unwrap();
+    let invoke = |image_installed: &str| {
+        Command::new("sh")
+            .arg(root.join("install-ubuntu.sh"))
+            .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
+            .env("FIXTURE", root)
+            .env("IMAGE_INSTALLED", image_installed)
+            .output()
+            .unwrap()
+    };
+    let result = invoke("0");
     assert!(
         result.status.success(),
         "{}",
@@ -113,4 +121,16 @@ esac
     assert!(transactions.contains("install -y "));
     assert!(transactions.contains("droidloom-runtime_0.1.0-47_amd64.deb"));
     assert!(transactions.contains("droidloom-image_0.1.0-47_amd64.deb"));
+
+    fs::write(root.join("transactions"), "").unwrap();
+    let result = invoke("1");
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let transactions = fs::read_to_string(root.join("transactions")).unwrap();
+    assert!(transactions.contains("install -y --reinstall "));
+    assert!(transactions.contains("droidloom-runtime_0.1.0-47_amd64.deb"));
+    assert!(!transactions.contains("droidloom-image_0.1.0-47_amd64.deb"));
 }

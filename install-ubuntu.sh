@@ -34,7 +34,12 @@ fi
 runtime=droidloom-runtime_${version}_${architecture}.deb
 image=droidloom-image_${version}_${architecture}.deb
 curl -fL --retry 3 -o "$temporary/$runtime" "$release/$runtime"
-curl -fL --retry 3 -o "$temporary/$image" "$release/$image"
+image_current=
+if dpkg-query -W -f='${Status} ${Version}\n' droidloom-image 2>/dev/null | grep -Fq "install ok installed $version"; then
+    image_current=yes
+else
+    curl -fL --retry 3 -o "$temporary/$image" "$release/$image"
+fi
 
 as_root() {
   if [ "$(id -u)" -eq 0 ]; then "$@"; else sudo "$@"; fi
@@ -42,6 +47,13 @@ as_root() {
 printf '%s\n' "Installing Droidloom $version ($architecture)." \
   'Administrator access is needed to install system files and their Ubuntu dependencies.'
 as_root apt-get update
-as_root apt-get install -y "$temporary/$runtime" "$temporary/$image"
+if [ -n "$image_current" ]; then
+    # The matching image is already installed; reinstall only the runtime so a
+    # rebuilt runtime can replace an existing same-version install without
+    # downloading the 1 GB image again.
+    as_root apt-get install -y --reinstall "$temporary/$runtime"
+else
+    as_root apt-get install -y --reinstall "$temporary/$runtime" "$temporary/$image"
+fi
 printf '\nDroidloom is installed. Run droidloomctl start as your ordinary desktop user.\n'
 printf 'To start it with your graphical session: systemctl --user enable droidloom.service\n'

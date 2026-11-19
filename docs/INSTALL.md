@@ -73,7 +73,9 @@ sh install-ubuntu.sh
 The script downloads the newest matching `amd64` or `arm64` package pair from the
 `packages` GitHub release and runs `apt-get install` with normal dependency
 resolution. Run the same script again to update. Set `DROIDLOOM_VERSION` to pin a
-release, for example `DROIDLOOM_VERSION=0.1.0-47 sh install-ubuntu.sh`.
+release, for example `DROIDLOOM_VERSION=0.1.0-47 sh install-ubuntu.sh`. Set
+`DROIDLOOM_REPOSITORY` to use a fork's package release instead, for example
+`DROIDLOOM_REPOSITORY=owner/repo sh install-ubuntu.sh`.
 Sudo is needed to install system files and their Ubuntu dependencies.
 
 For locally built packages, put one matching pair in a directory and run:

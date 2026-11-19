@@ -4,7 +4,7 @@ set -eu
 
 case "${1:-}" in
   --help|-h)
-    printf 'Usage: sh install-ubuntu.sh\nDownloads the matching Droidloom .deb pair from the packages release and installs it with apt.\nSet DROIDLOOM_VERSION to pin a version (for example 0.1.0-47).\n'
+    printf 'Usage: sh install-ubuntu.sh\nDownloads the matching Droidloom .deb pair from the packages release and installs it with apt.\nSet DROIDLOOM_VERSION to pin a version (for example 0.1.0-47).\nSet DROIDLOOM_REPOSITORY to use a fork package release (for example yueguang2/droidloom).\n'
     exit 0 ;;
   '') ;;
   *) printf 'Unknown argument: %s\n' "$1" >&2; exit 1 ;;
@@ -19,8 +19,9 @@ case "$(dpkg --print-architecture)" in
   *) echo 'Droidloom .deb packages require amd64 or arm64.' >&2; exit 1 ;;
 esac
 
-release=https://github.com/denialwm/droidloom/releases/download/packages
-api=https://api.github.com/repos/denialwm/droidloom/releases/tags/packages
+repository=${DROIDLOOM_REPOSITORY:-denialwm/droidloom}
+release=https://github.com/$repository/releases/download/packages
+api=https://api.github.com/repos/$repository/releases/tags/packages
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT HUP INT TERM
 version=${DROIDLOOM_VERSION:-}

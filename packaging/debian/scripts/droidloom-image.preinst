@@ -2,6 +2,21 @@
 # An image-only upgrade must also stop the running cell before files change.
 set -e
 
+# On Debian and Ubuntu, util-linux installs runuser in /usr/sbin. Older
+# Droidloom helpers looked for it in /usr/bin, so make that path temporarily
+# available for the helper that is still installed until this package unpacks.
+created_runuser=
+cleanup_runuser() {
+    if [ -n "${created_runuser:-}" ]; then
+        rm -f /usr/bin/runuser
+    fi
+}
+trap cleanup_runuser EXIT HUP INT TERM
+if [ ! -e /usr/bin/runuser ] && [ ! -L /usr/bin/runuser ] && [ -x /usr/sbin/runuser ]; then
+    ln -s ../sbin/runuser /usr/bin/runuser
+    created_runuser=1
+fi
+
 case "$1" in
     upgrade)
         if [ -x /usr/lib/droidloom/droidloom-package-helper ]; then

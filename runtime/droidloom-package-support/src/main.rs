@@ -424,9 +424,16 @@ fn gpu(choice: Option<GpuChoice>) -> Result<()> {
     println!("Restart Droidloom to use it: droidloomctl restart");
     Ok(())
 }
+fn runuser_program() -> &'static str {
+    if Path::new("/usr/bin/runuser").is_file() {
+        "/usr/bin/runuser"
+    } else {
+        "/usr/sbin/runuser"
+    }
+}
 fn user_command(uid: u32, executable: &str) -> Result<Command> {
     let account = user(uid)?;
-    let mut command = Command::new("/usr/bin/runuser");
+    let mut command = Command::new(runuser_program());
     command
         .args(["-u", &account.name, "--", "/usr/bin/env"])
         .arg(format!("XDG_RUNTIME_DIR=/run/user/{uid}"))
@@ -476,7 +483,7 @@ fn before(remove: bool) -> Result<()> {
         if let Some(value) = optional_json(Path::new(STATE))? {
             let state: SetupState = serde_json::from_value(value)?;
             let account = user(state.uid)?;
-            run(Command::new("/usr/bin/runuser")
+            run(Command::new(runuser_program())
                 .args(["-u", &account.name, "--", "/usr/bin/env"])
                 .arg(format!("XDG_DATA_HOME={}", state.data_home.display()))
                 .arg(format!("XDG_STATE_HOME={}", state.state_home.display()))

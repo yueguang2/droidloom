@@ -73,6 +73,7 @@ enum NetworkResource {
     FilterTable,
     NatTable,
     UfwForwardRule,
+    DockerForwardRules,
 }
 
 impl DevelopmentNetwork {
@@ -109,7 +110,8 @@ impl DevelopmentNetwork {
         );
         self.enable_forwarding()?;
         self.setup_rules()?;
-        self.setup_ufw_forwarding()
+        self.setup_ufw_forwarding()?;
+        self.setup_docker_forwarding()
     }
 
     fn setup_ufw_forwarding(&mut self) -> Result<(), DevelopmentError> {
@@ -119,6 +121,21 @@ impl DevelopmentNetwork {
         if ufw_chain_exists()? {
             run("iptables", ufw_rule_arguments("-I", &self.names))?;
             self.resources.push(NetworkResource::UfwForwardRule);
+        }
+        Ok(())
+    }
+
+    fn setup_docker_forwarding(&mut self) -> Result<(), DevelopmentError> {
+        // Docker installs a FORWARD policy of DROP and sends every packet
+        // through DOCKER-USER before its own chains. The UFW user chain does
+        // not cover that path, so accept the cell's exact addresses here too.
+        if docker_user_chain_exists()? {
+            self.resources.push(NetworkResource::DockerForwardRules);
+            for rule in docker_rule_arguments("-I", &self.names) {
+                if !command_succeeds("iptables", rule)? {
+                    run("iptables", rule)?;
+                }
+            }
         }
         Ok(())
     }
@@ -222,6 +239,7 @@ table ip {nat_table} {{
         while let Some(resource) = self.resources.pop() {
             let result = match resource {
                 NetworkResource::UfwForwardRule => remove_ufw_rule(&self.names),
+                NetworkResource::DockerForwardRules => remove_docker_rules(&self.names),
                 NetworkResource::Namespace => run("ip", ["netns", "delete", &self.names.namespace]),
                 NetworkResource::HostInterface => {
                     run("ip", ["link", "delete", &self.names.host_interface])
@@ -262,6 +280,7 @@ table ip {nat_table} {{
         let mut first_error = None;
 
         record_error(&mut first_error, remove_ufw_rule(&names));
+        record_error(&mut first_error, remove_docker_rules(&names));
         record_error(
             &mut first_error,
             run_script(
@@ -338,6 +357,68 @@ fn ufw_rule_arguments<'a>(operation: &'a str, names: &'a NetworkNames) -> [&'a s
         "-j",
         "ACCEPT",
     ]
+}
+
+fn docker_rule_arguments<'a>(
+    operation: &'a str,
+    names: &'a NetworkNames,
+) -> [[&'a str; 13]; 2] {
+    [
+        [
+            "-w",
+            operation,
+            "DOCKER-USER",
+            "-i",
+            &names.host_interface,
+            "-s",
+            CELL_IPV4_CIDR,
+            "-m",
+            "comment",
+            "--comment",
+            &names.namespace,
+            "-j",
+            "ACCEPT",
+        ],
+        [
+            "-w",
+            operation,
+            "DOCKER-USER",
+            "-o",
+            &names.host_interface,
+            "-d",
+            CELL_IPV4_CIDR,
+            "-m",
+            "comment",
+            "--comment",
+            &names.namespace,
+            "-j",
+            "ACCEPT",
+        ],
+    ]
+}
+
+fn docker_user_chain_exists() -> Result<bool, DevelopmentError> {
+    match droidloom_cpu_placement::command("iptables")
+        .args(["-w", "-S", "DOCKER-USER"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+    {
+        Ok(status) => Ok(status.success()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(io_error("inspect Docker forwarding chain", error)),
+    }
+}
+
+fn remove_docker_rules(names: &NetworkNames) -> Result<(), DevelopmentError> {
+    if docker_user_chain_exists()? {
+        for rule in docker_rule_arguments("-D", names) {
+            if command_succeeds("iptables", rule)? {
+                run("iptables", rule)?;
+            }
+        }
+    }
+    Ok(())
 }
 
 fn ufw_chain_exists() -> Result<bool, DevelopmentError> {
@@ -485,6 +566,21 @@ mod tests {
         assert_eq!(names.namespace, "droidloom-u1001");
         assert_eq!(names.host_interface, "dlh1001");
         assert!(names.host_interface.len() < libc::IF_NAMESIZE);
+    }
+
+    #[test]
+    fn docker_rules_accept_both_directions_of_the_cell_link() {
+        let names = NetworkNames::for_spec(&spec(1001));
+        let rules = docker_rule_arguments("-I", &names);
+        assert_eq!(rules[0][2], "DOCKER-USER");
+        assert_eq!(rules[0][3], "-i");
+        assert_eq!(rules[0][4], names.host_interface);
+        assert_eq!(rules[0][6], CELL_IPV4_CIDR);
+        assert_eq!(rules[0][10], names.namespace);
+        assert_eq!(rules[1][3], "-o");
+        assert_eq!(rules[1][4], names.host_interface);
+        assert_eq!(rules[1][6], CELL_IPV4_CIDR);
+        assert_eq!(rules[1][10], names.namespace);
     }
 
     #[test]
